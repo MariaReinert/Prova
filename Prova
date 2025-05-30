@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Consulta de Livros por ISBN</title>
+ 
+  <style>    
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #fff0f5; 
+      color: #c71585;
+      padding: 20px;
+      max-width: 800px;
+      margin: auto;
+    }
+ 
+    h2 {
+      text-align: center;
+      color: #c71585; 
+    }
+ 
+    input, button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      border: 1px solid #d8bfd8;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+ 
+    button {
+      background-color: #db7093;
+      color: #c71585;
+      font-weight: bold;
+      cursor: pointer;
+    }
+ 
+    button:hover {
+      background-color: #a50883;
+    }
+ 
+    .livro {
+      background-color: #fff;
+      border: 1px solid pink;
+      border-radius: 12px;
+      padding: 15px;
+      margin-top: 20px;
+      box-shadow: 2px 2px 10px rgb(148, 4, 52)
+    }
+ 
+    img {
+      max-width: 120px;
+      margin-top: 10px;
+      border-radius: 6px;
+      box-shadow: 2px 2px 8px rgb(168, 22, 22)
+    }
+ 
+    @media (max-width: 600px) {
+      body {
+        padding: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+ 
+  <h2>Consulta de Livros</h2> 
+ 
+  <input id="isbnInput" type="text" placeholder="Digite o ISBN do livro" />
+  <button onclick="buscarLivro()">Buscar</button>
+  <button onclick="mostrarLivrosSalvos()">Ver livros salvos</button>
+  
+  <div id="resultado"></div> 
+ 
+  <div id="salvos"></div>
+ 
+  <script>   
+    async function buscarLivro() {
+      const isbn = document.getElementById('isbnInput').value.trim();
+      const resultado = document.getElementById('resultado');
+      resultado.innerHTML = '';
+ 
+      try {
+const res = await fetch(`https://brasilapi.com.br/api/isbn/v1/${isbn}`);
+ 
+        if (!res.ok) throw new Error('Livro não encontrado');
+ 
+        const data = await res.json();
+        const div = document.createElement('div');
+        const capaId = `capa_${Date.now()}`;
+ 
+        div.className = 'livro';
+        div.innerHTML = `
+          <strong>Título:</strong> ${data.title || 'Não informado'}<br>
+          <strong>Subtítulo:</strong> ${data.subtitle || 'Não informado'}<br>
+          <strong>Autores:</strong> ${data.authors?.join(', ') || 'Não informado'}<br>
+          <strong>Editora:</strong> ${data.publisher || 'Não informado'}<br>
+          <strong>Sinopse:</strong> ${data.synopsis || 'Não informada'}<br>
+          <strong>Ano:</strong> ${data.year || 'Não informado'}<br>
+          <strong>Páginas:</strong> ${data.page_count || 'Não informado'}<br>
+          <strong>Categorias:</strong> ${data.subjects?.join(', ') || 'Não informadas'}<br>
+          <br>
+          <button onclick='mostrarCapa("${data.cover_url}", "${capaId}")'>Ver capa</button>
+          <div id="${capaId}" style="margin-top:10px;"></div>
+          <br><br>
+          <button onclick='salvarLivro(${JSON.stringify(data).replace(/"/g, '&quot;')})'>Salvar</button>
+        `;
+        resultado.appendChild(div);
+      } catch (erro) {
+        resultado.innerHTML = `<p style="color: red;">Erro: ${erro.message}</p>`;
+      }
+    }
+ 
+    function mostrarCapa(url, containerId) {
+      const container = document.getElementById(containerId); 
+      
+      if (container.innerHTML.trim() !== '') {
+        container.innerHTML = '';
+        return;
+      }
+      
+      if (url && url.startsWith('http')) {
+        const img = document.createElement('img');
+        img.src = url.replace('http://', 'https://');
+        img.alt = 'Capa do livro';
+        container.appendChild(img);
+      } else {
+        container.innerHTML = '<p><em>Sem capa disponível.</em></p>';
+      }
+    }
+ 
+    function salvarLivro(livro) {
+      let livrosSalvos = JSON.parse(localStorage.getItem('livros')) || [];
+      livrosSalvos.push(livro);
+      localStorage.setItem('livros', JSON.stringify(livrosSalvos));
+      alert(`Livro "${livro.title}" salvo com sucesso!`);
+    }
+ 
+    function mostrarLivrosSalvos() {
+      const salvos = document.getElementById('salvos');
+      salvos.innerHTML = '';
+ 
+      const livros = JSON.parse(localStorage.getItem('livros')) || [];
+ 
+      if (livros.length === 0) {
+        salvos.innerHTML = '<p>Nenhum livro salvo ainda.</p>';
+        return;
+      }
+ 
+      livros.forEach((livro, index) => {
+        const div = document.createElement('div');
+        const capaId = `capa_salva_${index}`;
+ 
+        div.className = 'livro';
+        div.innerHTML = `
+          <strong>Título:</strong> ${livro.title}<br>
+          <strong>Autores:</strong> ${livro.authors?.join(', ') || 'N/A'}<br>
+          <button onclick='mostrarCapa("${livro.cover_url}", "${capaId}")'>Ver capa</button>
+          <div id="${capaId}" style="margin-top:10px;"></div>
+          <br>
+          <button onclick="excluirLivro(${index})" style="background-color:#52034e;">Excluir</button>
+        `;
+        salvos.appendChild(div);
+      });
+    }    
+    function excluirLivro(index) {
+      const livros = JSON.parse(localStorage.getItem('livros')) || [];
+ 
+      if (index >= 0 && index < livros.length) {
+        const tituloRemovido = livros[index].title;
+        livros.splice(index, 1);
+        localStorage.setItem('livros', JSON.stringify(livros)); 
+        alert(`Livro "${tituloRemovido}" excluído com sucesso!`);
+        mostrarLivrosSalvos(); 
+      }
+    }   
+    
+  </script>
+ 
+</body>
+</html>
