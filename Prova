@@ -82,7 +82,7 @@
       resultado.innerHTML = '';
  
       try {
-const res = await fetch(`https://brasilapi.com.br/api/isbn/v1/${isbn}`);
+const res = await fetch(`https://brasilapi.com.br/api/isbn/v1/${isbn}?providers=google-books`);
  
         if (!res.ok) throw new Error('Livro não encontrado');
  
